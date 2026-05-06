@@ -1,0 +1,11 @@
+- name: mixed-local
+  description: Mixed classical fixture
+  type: file
+  path: local-rules.yaml
+  behavior: classical
+  format: yaml
+- name: disabled-draft
+  description: Disabled draft entry
+  enabled: false
+  type: http
+  format: yaml
