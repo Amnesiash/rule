@@ -81,5 +81,5 @@ jobs:
         if: hashFiles('.release-work/telegram-notification.html') != ''
         run: bun scripts/notify-artifact-changes.mjs --message-file .release-work/telegram-notification.html
         env:
-          TELEGRAM_BOT_TOKEN: ${{ 6682717565:AAGV2T1fLMicCsEnbvVUbxFSHXR5G4xE3eg }}
-          TELEGRAM_CHAT_ID: ${{ 469763189 }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
