@@ -60,6 +60,7 @@ jobs:
           publish_dir: ./.release
           force_orphan: true
           commit_message: ${{ env.COMMIT_MESSAGE }}
+          enable_jekyll: true
 
       - name: Send provider artifact change notification
         if: hashFiles('.release-work/telegram-notification.html') != ''
