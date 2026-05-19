@@ -10,7 +10,7 @@ https://raw.githubusercontent.com/ConnersHua/RuleGo/master/Surge/Ruleset/Direct.
 https://raw.githubusercontent.com/Amnesiash/ladder_rules_script/main/Rules/Custom/AddDirect.list
 https://raw.githubusercontent.com/666OS/rules/release/mihomo/Direct.txt
 https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/UnBan.list
-# https://raw.githubusercontent.com/ConnersHua/RuleGo/master/Surge/Ruleset/Direct+.list
+https://raw.githubusercontent.com/ConnersHua/RuleGo/master/Surge/Ruleset/Direct+.list
 
 [Proxy]
 https://raw.githubusercontent.com/666OS/rules/release/mihomo/Proxy.txt
@@ -18,7 +18,7 @@ https://raw.githubusercontent.com/Amnesiash/ladder_rules_script/main/Rules/Custo
 https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/ProxyGFWlist.list
 https://raw.githubusercontent.com/ConnersHua/RuleGo/master/Surge/Ruleset/Proxy.list
 
-[GlobalMedia]
+[Streaming]
 https://raw.githubusercontent.com/ConnersHua/RuleGo/master/Surge/Ruleset/Extra/Streaming/!CN.list
 https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/ProxyMedia.list
 
@@ -27,17 +27,23 @@ https://raw.githubusercontent.com/666OS/rules/release/mihomo/AI.txt
 https://raw.githubusercontent.com/ConnersHua/RuleGo/master/Surge/Ruleset/Extra/AI.list
 https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Ruleset/AI.list
 
-[Lan]
+[Private]
 https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/LocalAreaNetwork.list
 
 [WeChat]
 https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/WeChat/WeChat.list
+https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Ruleset/Wechat.list
+https://raw.githubusercontent.com/ConnersHua/RuleGo/master/Surge/Ruleset/Extra/WeChat.list
 
-[BilibiliHMT]
+[StreamingHMT]
 https://raw.githubusercontent.com/ddgksf2013/Filter/master/StreamingSE.list
+https://raw.githubusercontent.com/ConnersHua/RuleGo/master/Surge/Ruleset/Extra/Streaming/CN.list
 
 [Apple]
 https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Apple.list
 
 [Telegram]
 https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Telegram/Telegram.list
+https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Telegram.list
+https://raw.githubusercontent.com/ConnersHua/RuleGo/master/Surge/Ruleset/Extra/Telegram.list
+
