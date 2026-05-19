@@ -5,6 +5,20 @@ import os from "node:os";
 import path from "node:path";
 import { buildRelease } from "../lib/artifacts.mjs";
 
+function stripGeneratedHeader(text) {
+  const lines = String(text ?? "").split(/\r?\n/u);
+  if (
+    lines.length >= 3 &&
+    lines[0].startsWith("# NAME:") &&
+    lines[1].startsWith("# UPDATE:") &&
+    lines[2].startsWith("# TOTAL:")
+  ) {
+    const rest = lines.slice(3).join("\n");
+    return rest.startsWith("\n") ? rest.slice(1) : rest;
+  }
+  return String(text ?? "");
+}
+
 async function withProject(files, fn) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "rule-build-"));
   for (const [relative, content] of Object.entries(files)) {
@@ -86,7 +100,7 @@ payload:
           (artifact) =>
             artifact.relativePath === "example/mixed-local.original.yaml",
         ),
-        true,
+        false,
       );
       assert.equal(
         result.artifacts.some(
@@ -97,16 +111,28 @@ payload:
         true,
       );
       assert.equal(
-        await fs.readFile(path.join(output, "apple_Domain.txt"), "utf8"),
-        "mrs:example.com\n+.example.org\n*\nmijia cloud\n",
+        /^# NAME: apple_Domain\n# UPDATE: .+\n# TOTAL: 4\n\nmrs:example\.com\n\+\.example\.org\n\*\nmijia cloud\n$/u.test(
+          await fs.readFile(path.join(output, "apple_Domain.txt"), "utf8"),
+        ),
+        true,
       );
       assert.equal(
-        await fs.readFile(path.join(output, "apple_IP.txt"), "utf8"),
-        "IP-CIDR,192.0.2.0/24\nIP-CIDR6,2001:db8::/32\n",
+        /^# NAME: apple_IP\n# UPDATE: .+\n# TOTAL: 2\n\nIP-CIDR,192\.0\.2\.0\/24\nIP-CIDR6,2001:db8::\/32\n$/u.test(
+          await fs.readFile(path.join(output, "apple_IP.txt"), "utf8"),
+        ),
+        true,
       );
       assert.equal(
-        await fs.readFile(path.join(output, "apple.yaml"), "utf8"),
-        "payload:\n  - PROCESS-NAME,Example.app\n",
+        /^# NAME: apple\n# UPDATE: .+\n# TOTAL: 1\n\npayload:\n  - PROCESS-NAME,Example\.app\n$/u.test(
+          await fs.readFile(path.join(output, "apple.yaml"), "utf8"),
+        ),
+        true,
+      );
+      assert.equal(
+        /^# NAME: apple_Classical\n# UPDATE: .+\n# TOTAL: 7\n\npayload:\n  - DOMAIN,example\.com\n  - DOMAIN,\*\n  - DOMAIN,mijia cloud\n  - DOMAIN-SUFFIX,example\.org\n  - IP-CIDR,192\.0\.2\.0\/24\n  - IP-CIDR6,2001:db8::\/32\n  - PROCESS-NAME,Example\.app\n$/u.test(
+          await fs.readFile(path.join(output, "apple_Classical.yaml"), "utf8"),
+        ),
+        true,
       );
       const manifest = JSON.parse(
         await fs.readFile(path.join(root, ".release", "artifacts-manifest.json"), "utf8"),
@@ -141,12 +167,13 @@ payload:
       assert.match(readme, /Source config: \[apple\.yaml\]/);
       assert.match(readme, /### mrs\(ipcidr\)/);
       assert.match(readme, /### mrs\(domain\)/);
+      assert.match(readme, /### yaml\(all\)/);
       assert.match(readme, /### yaml\(remaining\)/);
       assert.doesNotMatch(readme, /剩余部分/);
       assert.match(readme, /apple_Domain\.mrs/);
       assert.match(readme, /Text: \[apple_Domain\.txt\]/);
       assert.match(readme, /apple\.yaml/);
-      assert.match(readme, /Source: \[mixed-local\.original\.yaml\]/);
+      assert.match(readme, /Source: _Unavailable_/);
       assert.match(
         readme,
         /https:\/\/raw\.githubusercontent\.com\/xream\/rule\/release\/example\/apple_Domain\.mrs/,
@@ -226,42 +253,32 @@ test("groups source entries by config file unless separate is true", async () =>
       });
       const output = path.join(root, ".release", "example");
       assert.equal(
-        await fs.readFile(path.join(output, "bundle_Domain.txt"), "utf8"),
+        stripGeneratedHeader(await fs.readFile(path.join(output, "bundle_Domain.txt"), "utf8")),
         "mrs:a.example\nb.example\n",
       );
       assert.equal(
-        await fs.readFile(path.join(output, "standalone_Domain.txt"), "utf8"),
+        stripGeneratedHeader(await fs.readFile(path.join(output, "standalone_Domain.txt"), "utf8")),
         "mrs:standalone.example\n",
       );
       assert.equal(
-        await fs.readFile(path.join(output, "bundle_IP.txt"), "utf8"),
-        "IP-CIDR,203.0.113.1/32\n",
+        stripGeneratedHeader(await fs.readFile(path.join(output, "bundle.yaml"), "utf8")),
+        "",
       );
       assert.equal(
-        await fs.readFile(path.join(output, "bundle.yaml"), "utf8"),
-        "payload:\n  - DOMAIN,blackhole.invalid\n",
+        stripGeneratedHeader(await fs.readFile(path.join(output, "bundle_Classical.yaml"), "utf8")),
+        "payload:\n  - DOMAIN,a.example\n  - DOMAIN,b.example\n",
       );
       const readme = await fs.readFile(path.join(output, "README.md"), "utf8");
       assert.match(readme, /RULE-SET,bundle_Domain,bundle/);
       assert.match(readme, /RULE-SET,standalone_Domain,bundle/);
-      assert.match(
-        readme,
-        /RULE-SET,bundle,bundle,no-resolve # placeholder: upstream currently has no remaining rules; contains DOMAIN,blackhole\.invalid only/,
-      );
-      assert.match(
-        readme,
-        /RULE-SET,bundle_IP,bundle,no-resolve # placeholder: upstream currently has no ipcidr rules; contains 203\.0\.113\.1\/32 only/,
-      );
-      assert.match(
-        readme,
-        /bundle: \{ <<: \*yaml, url: https:\/\/raw\.githubusercontent\.com\/xream\/rule\/release\/example\/bundle\.yaml \} # placeholder: upstream currently has no remaining rules/,
-      );
+      assert.match(readme, /RULE-SET,bundle,bundle,no-resolve/);
+      assert.doesNotMatch(readme, /RULE-SET,bundle_IP,bundle,no-resolve/);
+      assert.match(readme, /bundle: \{ <<: \*yaml, url: https:\/\/raw\.githubusercontent\.com\/xream\/rule\/release\/example\/bundle\.yaml \}/);
       assert.doesNotMatch(readme, /name: "standalone"/);
       assert.match(
         readme,
-        /Sources: \[grouped-a\.original\.yaml\].*\[grouped-b\.original\.yaml\]/,
+        /Source: _Unavailable_/,
       );
-      assert.match(readme, /Source: \[standalone\.original\.yaml\]/);
     },
   );
 });
@@ -294,39 +311,19 @@ test("keeps original artifacts distinct for same-named entries in different conf
       });
       const output = path.join(root, ".release", "example");
       assert.equal(
-        await fs.readFile(path.join(output, "apple_Domain.txt"), "utf8"),
+        stripGeneratedHeader(await fs.readFile(path.join(output, "apple_Domain.txt"), "utf8")),
         "mrs:apple.example\n",
       );
       assert.equal(
-        await fs.readFile(path.join(output, "google_Domain.txt"), "utf8"),
+        stripGeneratedHeader(await fs.readFile(path.join(output, "google_Domain.txt"), "utf8")),
         "mrs:google.example\n",
       );
-      assert.equal(
-        await fs.readFile(
-          path.join(output, "apple_rules.original.yaml"),
-          "utf8",
-        ),
-        "payload:\n  - DOMAIN,apple.example\n",
-      );
-      assert.equal(
-        await fs.readFile(
-          path.join(output, "google_rules.original.yaml"),
-          "utf8",
-        ),
-        "payload:\n  - DOMAIN,google.example\n",
-      );
-      await assert.rejects(() =>
-        fs.access(path.join(output, "rules.original.yaml")),
-      );
+      await assert.rejects(() => fs.access(path.join(output, "apple_rules.original.yaml")));
+      await assert.rejects(() => fs.access(path.join(output, "google_rules.original.yaml")));
+      await assert.rejects(() => fs.access(path.join(output, "rules.original.yaml")));
       const readme = await fs.readFile(path.join(output, "README.md"), "utf8");
-      assert.match(
-        readme,
-        /#### apple_Domain\.mrs[\s\S]*Source: \[apple_rules\.original\.yaml\]/,
-      );
-      assert.match(
-        readme,
-        /#### google_Domain\.mrs[\s\S]*Source: \[google_rules\.original\.yaml\]/,
-      );
+      assert.match(readme, /#### apple_Domain\.mrs[\s\S]*Source: _Unavailable_/);
+      assert.match(readme, /#### google_Domain\.mrs[\s\S]*Source: _Unavailable_/);
     },
   );
 });
@@ -361,27 +358,20 @@ test("deduplicates grouped rules while preserving first occurrence order", async
       });
       const output = path.join(root, ".release", "example");
       assert.equal(
-        await fs.readFile(path.join(output, "dedupe_Domain.txt"), "utf8"),
+        stripGeneratedHeader(await fs.readFile(path.join(output, "dedupe_Domain.txt"), "utf8")),
         "mrs:first.example\n+.shared.example\nsecond.example\n",
       );
       assert.equal(
-        await fs.readFile(path.join(output, "dedupe.yaml"), "utf8"),
+        stripGeneratedHeader(await fs.readFile(path.join(output, "dedupe.yaml"), "utf8")),
         "payload:\n  - PROCESS-NAME,SharedApp\n",
       );
       assert.equal(
-        await fs.readFile(path.join(output, "dedupe_IP.txt"), "utf8"),
-        "IP-CIDR,203.0.113.1/32\n",
+        stripGeneratedHeader(await fs.readFile(path.join(output, "dedupe_Classical.yaml"), "utf8")),
+        "payload:\n  - DOMAIN,first.example\n  - DOMAIN,second.example\n  - DOMAIN-SUFFIX,shared.example\n  - PROCESS-NAME,SharedApp\n",
       );
       const readme = await fs.readFile(path.join(output, "README.md"), "utf8");
-      assert.match(
-        readme,
-        /dedupe_IP: \{ <<: \*ip, url: https:\/\/raw\.githubusercontent\.com\/xream\/rule\/release\/example\/dedupe_IP\.mrs \} # placeholder: upstream currently has no ipcidr rules/,
-      );
-      assert.match(
-        readme,
-        /Sources: \[first\.original\.yaml\].*\[second\.original\.yaml\]/,
-      );
-      assert.match(readme, /Source: \[first\.original\.yaml\]/);
+      assert.doesNotMatch(readme, /dedupe_IP: \{ <<: \*ip,/);
+      assert.match(readme, /Source: _Unavailable_/);
     },
   );
 });
@@ -419,10 +409,7 @@ test("fake-ip-filter entries only generate domain mrs and ignore route entries i
       });
       const output = path.join(root, ".release", "example");
       assert.equal(
-        await fs.readFile(
-          path.join(output, "mixed_Domain.txt"),
-          "utf8",
-        ),
+        stripGeneratedHeader(await fs.readFile(path.join(output, "mixed_Domain.txt"), "utf8")),
         "mrs:fake.example\n",
       );
       await assert.rejects(() =>
@@ -463,7 +450,7 @@ test("fake-ip-filter entries only generate domain mrs and ignore route entries i
   );
 });
 
-test("fetches http sources and writes original artifacts", async () => {
+test("fetches http sources without writing original artifacts", async () => {
   await withProject(
     {
       "source/http/source.yaml": `
@@ -494,18 +481,12 @@ test("fetches http sources and writes original artifacts", async () => {
           return new Response("DOMAIN,remote.example\n");
         },
       });
-      assert.equal(
-        await fs.readFile(
-          path.join(root, ".release", "http", "remote.original.txt"),
-          "utf8",
-        ),
-        "DOMAIN,remote.example\n",
-      );
+      await assert.rejects(() => fs.access(path.join(root, ".release", "http", "remote.original.txt")));
     },
   );
 });
 
-test("writes inline payloads as original artifacts", async () => {
+test("renders inline payloads without writing original artifacts", async () => {
   await withProject(
     {
       "source/inline/source.yaml": `
@@ -524,13 +505,7 @@ test("writes inline payloads as original artifacts", async () => {
         repository: "xream/rule",
         mihomoPath,
       });
-      assert.equal(
-        await fs.readFile(
-          path.join(root, ".release", "inline", "inline-rules.original.txt"),
-          "utf8",
-        ),
-        "DOMAIN,inline.example\n",
-      );
+      await assert.rejects(() => fs.access(path.join(root, ".release", "inline", "inline-rules.original.txt")));
     },
   );
 });

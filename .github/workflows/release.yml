@@ -12,6 +12,7 @@ on:
       - "scripts/**"
       - "package.json"
       - "bun.lock"
+      - "source.txt"
       - ".github/workflows/release.yml"
 
 permissions:
@@ -48,6 +49,9 @@ jobs:
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
 
+      - name: Set update note
+        run: echo "COMMIT_MESSAGE=Auto Update $(TZ=Asia/Shanghai date '+%Y-%m-%d %H:%M:%S')" >> "$GITHUB_ENV"
+
       - name: Publish release branch
         uses: peaceiris/actions-gh-pages@v4
         with:
@@ -55,7 +59,7 @@ jobs:
           publish_branch: release
           publish_dir: ./.release
           force_orphan: true
-          commit_message: "Update generated rule artifacts"
+          commit_message: ${{ env.COMMIT_MESSAGE }}
 
       - name: Send provider artifact change notification
         if: hashFiles('.release-work/telegram-notification.html') != ''

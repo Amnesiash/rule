@@ -116,3 +116,9 @@ dist
 
 # TernJS port file
 .tern-port
+
+# macOS
+.DS_Store
+
+# Bun local install/cache
+.bun/

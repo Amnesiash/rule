@@ -4,6 +4,12 @@
 
 `main` 分支维护 source 配置、构建脚本和测试；生成结果发布到 `release` 分支。
 
+## 订阅链接（改动项）
+
+由于我不想把规则源逐条写进 `source/*/*.yaml`，所以把订阅链接集中写到仓库根目录的 `source.txt`。
+
+构建时会直接根据 `source.txt` 里的链接拉取内容并生成 release 产物；同时会把上游原文件备份到 `source/<source>/`（仅用于留档，不参与生成）。
+
 ## 使用入口
 
 - Release 分支：[xream/rule@release](https://github.com/xream/rule/tree/release)

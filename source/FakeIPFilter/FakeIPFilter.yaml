@@ -1,6 +1,0 @@
-- name: ShellCrash
-  type: http
-  behavior: classical
-  format: text
-  mihomo: fake-ip-filter
-  url: https://raw.githubusercontent.com/juewuy/ShellCrash/refs/heads/dev/public/fake_ip_filter.list

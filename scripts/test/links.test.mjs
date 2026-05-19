@@ -110,8 +110,16 @@ test("renders source table and artifact links", () => {
       {
         sourceRelativeDir: "example",
         entryName: "mixed",
+        kind: "classical-yaml",
+        label: "mixed classical yaml",
+        fileName: "mixed_Classical.yaml",
+        relativePath: "example/mixed_Classical.yaml",
+      },
+      {
+        sourceRelativeDir: "example",
+        entryName: "mixed",
         kind: "remaining-yaml",
-        label: "mixed yaml",
+        label: "mixed remaining yaml",
         fileName: "mixed.yaml",
         relativePath: "example/mixed.yaml",
       },
@@ -172,6 +180,7 @@ rule-providers:
   assert.doesNotMatch(readme, /mixed_IPCIDR/);
   assert.doesNotMatch(readme, /mixed\.ipcidr\.mrs/);
   assert.match(readme, /### mrs\(domain\)/);
+  assert.match(readme, /### yaml\(all\)/);
   assert.match(readme, /### yaml\(remaining\)/);
   assert.doesNotMatch(readme, /剩余部分/);
   assert.match(readme, /#### mixed_Domain\.mrs/);

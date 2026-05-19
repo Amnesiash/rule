@@ -164,6 +164,7 @@ function renderArtifacts({ artifacts, repository, releaseBranch }) {
   const groups = [
     ["mrs(ipcidr)", ["ipcidr-mrs"]],
     ["mrs(domain)", ["domain-mrs"]],
+    ["yaml(all)", ["classical-yaml"]],
     ["yaml(remaining)", ["remaining-yaml"]],
   ];
   const companionArtifacts = new Map(

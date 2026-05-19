@@ -7,21 +7,16 @@ import { enabledFiles, loadAllSources } from "./config.mjs";
 import { renderReleaseReadme } from "./links.mjs";
 import { installMihomo } from "./mihomo.mjs";
 import { rulesToYaml, splitRules } from "./rules.mjs";
+import { fetchWithFallback, sourceConfigsFromSourceTxt } from "./subscriptions.mjs";
 
 const execFileAsync = promisify(execFile);
 const SAFE_PROJECT_RESET_DIRS = new Set([".release", ".release-work"]);
 const PLACEHOLDER_RULES = {
   domain: ["blackhole.invalid"],
-  ipcidr: ["203.0.113.1/32"],
-  remaining: ["DOMAIN,blackhole.invalid"],
 };
 const PLACEHOLDER_MESSAGES = {
   domain:
     "upstream currently has no domain rules; contains blackhole.invalid only",
-  ipcidr:
-    "upstream currently has no ipcidr rules; contains 203.0.113.1/32 only",
-  remaining:
-    "upstream currently has no remaining rules; contains DOMAIN,blackhole.invalid only",
 };
 
 export class BuildReleaseError extends Error {
@@ -53,7 +48,8 @@ export async function buildRelease({
   await resetDir(outputRoot);
   await resetDir(workRoot);
 
-  const sourceConfigs = await loadAllSources({ projectRoot, sourceRoot });
+  const sourceTxtConfigs = await sourceConfigsFromSourceTxt({ projectRoot, sourceRoot });
+  const sourceConfigs = sourceTxtConfigs.length > 0 ? sourceTxtConfigs : await loadAllSources({ projectRoot, sourceRoot });
   const allArtifacts = [];
   let resolvedMihomoPath = mihomoPath;
 
@@ -233,26 +229,20 @@ async function processGroup({ group, outputRoot, workRoot, fetchImpl, getMihomoP
   for (const entry of group.entries) {
     const context = { sourceName: entry.sourceName, entryName: entry.name };
     const raw = await resolveRawEntry(entry, fetchImpl);
-    const originalPath = path.join(entryOutputDir, `${entry.originalArtifactSlug}.original${sourceExtension(entry)}`);
-    await fs.writeFile(originalPath, raw);
-    artifacts.push(
-      makeArtifact({
-        entry,
-        outputRoot,
-        filePath: originalPath,
-        kind: "original",
-        label: `${entry.name} original`,
-      }),
-    );
 
-    const split = entry.format === "mrs"
-      ? await splitMrsEntry({ entry, originalPath, entryWorkDir, getMihomoPath, context })
-      : splitRules({
-          content: raw.toString("utf8"),
-          format: entry.format,
-          behavior: entry.behavior,
-          context,
-        });
+    let split;
+    if (entry.format === "mrs") {
+      const mrsPath = path.join(entryWorkDir, `${entry.slug}.input.mrs`);
+      await fs.writeFile(mrsPath, raw);
+      split = await splitMrsEntry({ entry, originalPath: mrsPath, entryWorkDir, getMihomoPath, context });
+    } else {
+      split = splitRules({
+        content: raw.toString("utf8"),
+        format: entry.format,
+        behavior: entry.behavior,
+        context,
+      });
+    }
 
     if (entry.mihomo === "fake-ip-filter") {
       addToRuleBucket(buckets.domain, split.domain, entry.sourceEntryKey);
@@ -265,6 +255,8 @@ async function processGroup({ group, outputRoot, workRoot, fetchImpl, getMihomoP
   }
 
   const allSourceEntryKeys = group.entries.map((entry) => entry.sourceEntryKey);
+
+  const combinedYamlRules = combinedClassicalRulesForYaml(buckets);
 
   if (group.entry.mihomo === "fake-ip-filter") {
     artifacts.push(
@@ -298,24 +290,48 @@ async function processGroup({ group, outputRoot, workRoot, fetchImpl, getMihomoP
       placeholderMessage: placeholderMessageForBucket(buckets.domain, "domain"),
     })),
   );
+  if (buckets.ipcidr.rules.length > 0) {
+    artifacts.push(
+      ...(await convertRuleset({
+        entry: group.entry,
+        behavior: "ipcidr",
+        rules: buckets.ipcidr.rules,
+        entryOutputDir,
+        entryWorkDir,
+        outputRoot,
+        getMihomoPath,
+        sourceEntryKeys: sourceEntryKeysForBucket(buckets.ipcidr, allSourceEntryKeys),
+      })),
+    );
+  }
+
+  const combinedYamlPath = path.join(entryOutputDir, `${group.entry.slug}_Classical.yaml`);
+  await writeReleaseTextWithHeader({
+    outputPath: combinedYamlPath,
+    fileName: path.basename(combinedYamlPath),
+    total: combinedYamlRules.length,
+    content: rulesToYaml(combinedYamlRules),
+  });
   artifacts.push(
-    ...(await convertRuleset({
+    makeArtifact({
       entry: group.entry,
-      behavior: "ipcidr",
-      rules: placeholderRulesForEmptyBucket(buckets.ipcidr, "ipcidr"),
-      entryOutputDir,
-      entryWorkDir,
       outputRoot,
-      getMihomoPath,
-      sourceEntryKeys: sourceEntryKeysForBucket(buckets.ipcidr, allSourceEntryKeys),
-      placeholder: isPlaceholderBucket(buckets.ipcidr),
-      placeholderMessage: placeholderMessageForBucket(buckets.ipcidr, "ipcidr"),
-    })),
+      filePath: combinedYamlPath,
+      kind: "classical-yaml",
+      label: `${group.entry.name} yaml`,
+      sourceEntryKeys: sourceEntryKeysForBucket(buckets.remaining, allSourceEntryKeys),
+      placeholder: false,
+    }),
   );
 
-  const remainingRules = placeholderRulesForEmptyBucket(buckets.remaining, "remaining");
+  const remainingRules = buckets.remaining.rules;
   const remainingPath = path.join(entryOutputDir, `${group.entry.slug}.yaml`);
-  await fs.writeFile(remainingPath, rulesToYaml(remainingRules));
+  await writeReleaseTextWithHeader({
+    outputPath: remainingPath,
+    fileName: path.basename(remainingPath),
+    total: remainingRules.length,
+    content: rulesToYaml(remainingRules),
+  });
   artifacts.push(
     makeArtifact({
       entry: group.entry,
@@ -324,12 +340,78 @@ async function processGroup({ group, outputRoot, workRoot, fetchImpl, getMihomoP
       kind: "remaining-yaml",
       label: `${group.entry.name} remaining yaml`,
       sourceEntryKeys: sourceEntryKeysForBucket(buckets.remaining, allSourceEntryKeys),
-      placeholder: isPlaceholderBucket(buckets.remaining),
-      placeholderMessage: placeholderMessageForBucket(buckets.remaining, "remaining"),
+      placeholder: false,
     }),
   );
 
   return artifacts;
+}
+
+function combinedClassicalRulesForYaml(buckets) {
+  const rules = [];
+  for (const payload of buckets.domain.rules) {
+    if (typeof payload !== "string" || !payload.trim()) continue;
+    if (payload.startsWith("+.")) rules.push(`DOMAIN-SUFFIX,${payload.slice(2)}`);
+    else if (payload.startsWith("*.")) rules.push(`DOMAIN-WILDCARD,${payload}`);
+    else rules.push(`DOMAIN,${payload}`);
+  }
+  for (const payload of buckets.ipcidr.rules) {
+    if (typeof payload !== "string" || !payload.trim()) continue;
+    rules.push(`${payload.includes(":") ? "IP-CIDR6" : "IP-CIDR"},${payload}`);
+  }
+  rules.push(...buckets.remaining.rules);
+
+  if (rules.length === 0) return [];
+
+  return sortClassicalRules(rules);
+}
+
+function sortClassicalRules(rules) {
+  const indexed = rules.map((rule, index) => ({ rule: String(rule), index }));
+  indexed.sort((left, right) => {
+    const leftBucket = ruleSortBucket(left.rule);
+    const rightBucket = ruleSortBucket(right.rule);
+    if (leftBucket !== rightBucket) return leftBucket - rightBucket;
+    return left.index - right.index;
+  });
+  return indexed.map((item) => item.rule);
+}
+
+function ruleSortBucket(rule) {
+  const text = String(rule ?? "");
+  if (/^DOMAIN,/u.test(text)) return 0;
+  if (/^DOMAIN-SUFFIX,/u.test(text)) return 1;
+  if (/^DOMAIN-KEYWORD,/u.test(text)) return 2;
+  if (/^DOMAIN-WILDCARD,/u.test(text)) return 3;
+  if (/^IP-CIDR,/u.test(text)) return 4;
+  if (/^IP-CIDR6,/u.test(text)) return 5;
+  if (/^IP-ASN,/u.test(text)) return 6;
+  if (/^PROCESS-NAME,/u.test(text)) return 7;
+  if (/^URL-REGEX,/u.test(text)) return 8;
+  if (/^USER-AGENT,/u.test(text)) return 9;
+  if (/^GEOIP,/u.test(text)) return 10;
+  if (/^AND,/u.test(text)) return 11;
+  if (/^OR,/u.test(text)) return 12;
+  if (/^NOT,/u.test(text)) return 13;
+  if (/^DEST-PORT,/u.test(text)) return 14;
+  return 15;
+}
+
+async function writeReleaseTextWithHeader({ outputPath, fileName, total, content }) {
+  const update = formatUpdateTimestamp(new Date());
+  const name = path.parse(fileName).name;
+  const header = `# NAME: ${name}\n# UPDATE: ${update}\n# TOTAL: ${total}\n\n`;
+  await fs.writeFile(outputPath, `${header}${content.startsWith("\n") ? content.slice(1) : content}`);
+}
+
+function formatUpdateTimestamp(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hour = String(date.getHours()).padStart(2, "0");
+  const minute = String(date.getMinutes()).padStart(2, "0");
+  const second = String(date.getSeconds()).padStart(2, "0");
+  return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
 }
 
 function isPlaceholderBucket(bucket) {
@@ -428,7 +510,7 @@ async function resolveRawEntry(entry, fetchImpl) {
   if (entry.type === "http") {
     let response;
     try {
-      response = await fetchImpl(entry.url, fetchOptions(entry));
+      response = await fetchWithFallback(entry.url, fetchOptions(entry), fetchImpl);
     } catch (error) {
       throw new BuildReleaseError(`failed to fetch ${entry.url}: ${error.message}`, context);
     }
@@ -504,6 +586,7 @@ async function convertRuleset({
     outputPath: txtPath,
     outputRoot,
     getMihomoPath,
+    total: rules.length,
     sourceEntryKeys,
     placeholder,
     placeholderMessage,
@@ -518,6 +601,7 @@ async function exportTextFromMrs({
   outputPath,
   outputRoot,
   getMihomoPath,
+  total,
   sourceEntryKeys,
   placeholder = false,
   placeholderMessage,
@@ -532,6 +616,12 @@ async function exportTextFromMrs({
   if (behavior === "ipcidr") {
     await rewriteIpcidrTextForViewing(outputPath);
   }
+  await writeReleaseTextWithHeader({
+    outputPath,
+    fileName: path.basename(outputPath),
+    total: typeof total === "number" ? total : await countRuleLines(outputPath),
+    content: await fs.readFile(outputPath, "utf8"),
+  });
   return makeArtifact({
     entry,
     outputRoot,
@@ -542,6 +632,15 @@ async function exportTextFromMrs({
     placeholder,
     placeholderMessage,
   });
+}
+
+async function countRuleLines(filePath) {
+  const text = await fs.readFile(filePath, "utf8");
+  return text
+    .split(/\r?\n/u)
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith("#"))
+    .length;
 }
 
 async function rewriteIpcidrTextForViewing(outputPath) {
