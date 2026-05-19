@@ -325,24 +325,26 @@ async function processGroup({ group, outputRoot, workRoot, fetchImpl, getMihomoP
   );
 
   const remainingRules = buckets.remaining.rules;
-  const remainingPath = path.join(entryOutputDir, `${group.entry.slug}.yaml`);
-  await writeReleaseTextWithHeader({
-    outputPath: remainingPath,
-    fileName: path.basename(remainingPath),
-    total: remainingRules.length,
-    content: rulesToYaml(remainingRules),
-  });
-  artifacts.push(
-    makeArtifact({
-      entry: group.entry,
-      outputRoot,
-      filePath: remainingPath,
-      kind: "remaining-yaml",
-      label: `${group.entry.name} remaining yaml`,
-      sourceEntryKeys: sourceEntryKeysForBucket(buckets.remaining, allSourceEntryKeys),
-      placeholder: false,
-    }),
-  );
+  if (remainingRules.length > 0) {
+    const remainingPath = path.join(entryOutputDir, `${group.entry.slug}.yaml`);
+    await writeReleaseTextWithHeader({
+      outputPath: remainingPath,
+      fileName: path.basename(remainingPath),
+      total: remainingRules.length,
+      content: rulesToYaml(remainingRules),
+    });
+    artifacts.push(
+      makeArtifact({
+        entry: group.entry,
+        outputRoot,
+        filePath: remainingPath,
+        kind: "remaining-yaml",
+        label: `${group.entry.name} remaining yaml`,
+        sourceEntryKeys: sourceEntryKeysForBucket(buckets.remaining, allSourceEntryKeys),
+        placeholder: false,
+      }),
+    );
+  }
 
   return artifacts;
 }

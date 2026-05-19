@@ -261,19 +261,15 @@ test("groups source entries by config file unless separate is true", async () =>
         "mrs:standalone.example\n",
       );
       assert.equal(
-        stripGeneratedHeader(await fs.readFile(path.join(output, "bundle.yaml"), "utf8")),
-        "",
-      );
-      assert.equal(
         stripGeneratedHeader(await fs.readFile(path.join(output, "bundle_Classical.yaml"), "utf8")),
         "payload:\n  - DOMAIN,a.example\n  - DOMAIN,b.example\n",
       );
       const readme = await fs.readFile(path.join(output, "README.md"), "utf8");
       assert.match(readme, /RULE-SET,bundle_Domain,bundle/);
       assert.match(readme, /RULE-SET,standalone_Domain,bundle/);
-      assert.match(readme, /RULE-SET,bundle,bundle,no-resolve/);
+      assert.doesNotMatch(readme, /RULE-SET,bundle,bundle,no-resolve/);
       assert.doesNotMatch(readme, /RULE-SET,bundle_IP,bundle,no-resolve/);
-      assert.match(readme, /bundle: \{ <<: \*yaml, url: https:\/\/raw\.githubusercontent\.com\/xream\/rule\/release\/example\/bundle\.yaml \}/);
+      assert.doesNotMatch(readme, /bundle: \{ <<: \*yaml,/);
       assert.doesNotMatch(readme, /name: "standalone"/);
       assert.match(
         readme,
