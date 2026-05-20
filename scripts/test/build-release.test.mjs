@@ -144,7 +144,8 @@ payload:
             relativePath: artifact.relativePath,
             kind: artifact.kind,
             placeholder: artifact.placeholder,
-          })),
+          }))
+          .sort((a, b) => a.relativePath.localeCompare(b.relativePath)),
         [
           {
             relativePath: "example/apple_Domain.mrs",
@@ -161,7 +162,12 @@ payload:
             kind: "remaining-yaml",
             placeholder: false,
           },
-        ],
+          {
+            relativePath: "example/apple.yaml",
+            kind: "classical-yaml",
+            placeholder: false,
+          },
+        ].sort((a, b) => a.relativePath.localeCompare(b.relativePath)),
       );
       const readme = await fs.readFile(path.join(output, "README.md"), "utf8");
       assert.match(readme, /Source config: \[apple\.yaml\]/);

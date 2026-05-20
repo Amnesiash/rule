@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import crypto from "node:crypto";
 import YAML from "yaml";
 import { enabledFiles, loadAllSources } from "./config.mjs";
 import { renderReleaseReadme } from "./links.mjs";
@@ -326,12 +327,13 @@ async function processGroup({ group, outputRoot, workRoot, fetchImpl, getMihomoP
 
   const remainingRules = buckets.remaining.rules;
   if (remainingRules.length > 0) {
+    const sortedRemainingRules = sortClassicalRules(remainingRules);
     const remainingPath = path.join(entryOutputDir, `${group.entry.slug}_Remaining.yaml`);
     await writeReleaseTextWithHeader({
       outputPath: remainingPath,
       fileName: path.basename(remainingPath),
-      total: remainingRules.length,
-      content: rulesToYaml(remainingRules),
+      total: sortedRemainingRules.length,
+      content: rulesToYaml(sortedRemainingRules),
     });
     artifacts.push(
       makeArtifact({
@@ -446,9 +448,10 @@ function warnIgnoredFakeIpFilterRules({ entry, split, warn }) {
 
 async function writeArtifactManifest({ outputRoot, artifacts }) {
   const manifestPath = path.join(outputRoot, "artifacts-manifest.json");
-  const providerArtifacts = artifacts
+  const providerArtifacts = await Promise.all(
+    artifacts
     .filter(isProviderManifestArtifact)
-    .map((artifact) => ({
+    .map(async (artifact) => ({
       relativePath: artifact.relativePath,
       sourceRelativeDir: artifact.sourceRelativeDir,
       entryName: artifact.entryName,
@@ -457,7 +460,10 @@ async function writeArtifactManifest({ outputRoot, artifacts }) {
       mihomo: artifact.mihomo ?? "rules",
       ruleGroupName: artifact.ruleGroupName,
       placeholder: Boolean(artifact.placeholder),
-    }))
+      ...(await contentHashFieldsForManifestArtifact(artifact)),
+    })),
+  );
+  providerArtifacts
     .sort((left, right) => left.relativePath.localeCompare(right.relativePath));
   await fs.writeFile(
     manifestPath,
@@ -467,7 +473,57 @@ async function writeArtifactManifest({ outputRoot, artifacts }) {
 }
 
 function isProviderManifestArtifact(artifact) {
-  return ["domain-mrs", "ipcidr-mrs", "remaining-yaml"].includes(artifact.kind);
+  return ["domain-mrs", "ipcidr-mrs", "classical-yaml", "remaining-yaml"].includes(artifact.kind);
+}
+
+async function contentHashFieldsForManifestArtifact(artifact) {
+  if (!["domain-mrs", "ipcidr-mrs", "classical-yaml", "remaining-yaml"].includes(artifact.kind)) return {};
+  try {
+    const normalized = await normalizedManifestContentForArtifact(artifact);
+    if (!normalized) return {};
+    const sha256 = crypto.createHash("sha256").update(normalized, "utf8").digest("hex");
+    return { contentSha256: sha256 };
+  } catch {
+    return {};
+  }
+}
+
+async function normalizedManifestContentForArtifact(artifact) {
+  if (artifact.kind === "domain-mrs") {
+    const txtPath = artifact.absolutePath.replace(/_Domain\.mrs$/u, "_Domain.txt");
+    const raw = await fs.readFile(txtPath, "utf8");
+    return normalizeTextPayload(stripGeneratedHeader(raw));
+  }
+  if (artifact.kind === "ipcidr-mrs") {
+    const txtPath = artifact.absolutePath.replace(/_IP\.mrs$/u, "_IP.txt");
+    const raw = await fs.readFile(txtPath, "utf8");
+    return normalizeTextPayload(stripGeneratedHeader(raw));
+  }
+  if (artifact.kind === "classical-yaml" || artifact.kind === "remaining-yaml") {
+    const raw = await fs.readFile(artifact.absolutePath, "utf8");
+    const payload = YAML.parse(raw)?.payload;
+    const normalized = Array.isArray(payload) ? payload.map(String) : [];
+    return normalizeTextPayload(normalized.join("\n"));
+  }
+  return "";
+}
+
+function stripGeneratedHeader(text) {
+  const lines = String(text ?? "").split(/\r?\n/u);
+  let index = 0;
+  if (lines[index]?.startsWith("# NAME:")) index += 1;
+  if (lines[index]?.startsWith("# UPDATE:")) index += 1;
+  if (lines[index]?.startsWith("# TOTAL:")) index += 1;
+  if (lines[index] === "") index += 1;
+  return lines.slice(index).join("\n");
+}
+
+function normalizeTextPayload(text) {
+  return String(text ?? "")
+    .split(/\r?\n/u)
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith("#") && !line.startsWith("//"))
+    .join("\n");
 }
 
 function makeRuleBucket() {

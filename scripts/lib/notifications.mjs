@@ -2,11 +2,12 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import crypto from "node:crypto";
 import YAML from "yaml";
 
 const execFileAsync = promisify(execFile);
 const MANIFEST_FILE_NAME = "artifacts-manifest.json";
-const PROVIDER_KINDS = new Set(["domain-mrs", "ipcidr-mrs", "remaining-yaml"]);
+const PROVIDER_KINDS = new Set(["domain-mrs", "ipcidr-mrs", "classical-yaml", "remaining-yaml"]);
 const PLACEHOLDER_DOMAIN = "blackhole.invalid";
 const PLACEHOLDER_IPCIDR = "203.0.113.1/32";
 const PLACEHOLDER_REMAINING = "DOMAIN,blackhole.invalid";
@@ -95,7 +96,7 @@ export async function loadManifestFromGitRef({ ref, cwd = process.cwd() }) {
 
 export function compareProviderArtifactChanges(previousManifest, currentManifest) {
   if (!previousManifest) {
-    return { added: [], removed: [] };
+    return { added: [], removed: [], updated: [] };
   }
 
   const previous = realProviderArtifactMap(previousManifest);
@@ -106,15 +107,28 @@ export function compareProviderArtifactChanges(previousManifest, currentManifest
   const removed = [...previous.entries()]
     .filter(([key]) => !current.has(key))
     .map(([, artifact]) => artifact);
+  const updated = [...current.entries()]
+    .filter(([key]) => previous.has(key))
+    .map(([key, artifact]) => {
+      const before = previous.get(key);
+      if (!before) return null;
+      const beforeHash = before.contentSha256;
+      const afterHash = artifact.contentSha256;
+      if (!beforeHash || !afterHash) return null;
+      if (beforeHash === afterHash) return null;
+      return artifact;
+    })
+    .filter(Boolean);
 
   return {
     added: sortArtifacts(added),
     removed: sortArtifacts(removed),
+    updated: sortArtifacts(updated),
   };
 }
 
 export function hasProviderArtifactChanges(changes) {
-  return changes.added.length > 0 || changes.removed.length > 0;
+  return changes.added.length > 0 || changes.removed.length > 0 || changes.updated.length > 0;
 }
 
 export function renderTelegramArtifactChangeMessage({
@@ -124,12 +138,18 @@ export function renderTelegramArtifactChangeMessage({
   maxItemsPerSection = 25,
   maxMessageLength = TELEGRAM_MESSAGE_MAX_LENGTH,
 }) {
+  const normalizedChanges = {
+    added: Array.isArray(changes.added) ? changes.added : [],
+    removed: Array.isArray(changes.removed) ? changes.removed : [],
+    updated: Array.isArray(changes.updated) ? changes.updated : [],
+  };
   const itemLimits = {
-    added: Math.min(changes.added.length, maxItemsPerSection),
-    removed: Math.min(changes.removed.length, maxItemsPerSection),
+    added: Math.min(normalizedChanges.added.length, maxItemsPerSection),
+    removed: Math.min(normalizedChanges.removed.length, maxItemsPerSection),
+    updated: Math.min(normalizedChanges.updated.length, maxItemsPerSection),
   };
   let message = renderTelegramArtifactChangeMessageWithLimits({
-    changes,
+    changes: normalizedChanges,
     repository,
     releaseBranch,
     itemLimits,
@@ -141,11 +161,13 @@ export function renderTelegramArtifactChangeMessage({
   ) {
     if (itemLimits.added >= itemLimits.removed && itemLimits.added > 0) {
       itemLimits.added -= 1;
+    } else if (itemLimits.updated >= itemLimits.removed && itemLimits.updated > 0) {
+      itemLimits.updated -= 1;
     } else {
       itemLimits.removed -= 1;
     }
     message = renderTelegramArtifactChangeMessageWithLimits({
-      changes,
+      changes: normalizedChanges,
       repository,
       releaseBranch,
       itemLimits,
@@ -164,7 +186,7 @@ function renderTelegramArtifactChangeMessageWithLimits({
   const lines = [
     "<b>rule provider 产物变化</b>",
     repository ? `<code>${escapeHtml(repository)}</code>` : null,
-    `新增 <b>${changes.added.length}</b> / 减少 <b>${changes.removed.length}</b>`,
+    `新增 <b>${changes.added.length}</b> / 减少 <b>${changes.removed.length}</b> / 更新 <b>${changes.updated.length}</b>`,
     "",
     renderChangeSection({
       title: "新增",
@@ -172,6 +194,13 @@ function renderTelegramArtifactChangeMessageWithLimits({
       repository,
       releaseBranch,
       maxItems: itemLimits.added,
+    }),
+    renderChangeSection({
+      title: "更新",
+      artifacts: changes.updated,
+      repository,
+      releaseBranch,
+      maxItems: itemLimits.updated,
     }),
     renderChangeSection({
       title: "减少",
@@ -270,13 +299,23 @@ function providerArtifactFromPath(relativePath) {
       placeholder: false,
     });
   }
+  if (fileName.endsWith("_Remaining.yaml")) {
+    return normalizeManifestArtifact({
+      relativePath,
+      fileName,
+      sourceRelativeDir,
+      entryName: fileName.slice(0, -"_Remaining.yaml".length),
+      kind: "remaining-yaml",
+      placeholder: false,
+    });
+  }
   if (fileName.endsWith(".yaml")) {
     return normalizeManifestArtifact({
       relativePath,
       fileName,
       sourceRelativeDir,
       entryName: fileName.slice(0, -".yaml".length),
-      kind: "remaining-yaml",
+      kind: "classical-yaml",
       placeholder: false,
     });
   }
@@ -290,9 +329,20 @@ async function markInferredPlaceholders(manifest, readTextFile) {
       manifest.providerArtifacts.map(async (artifact) => ({
         ...artifact,
         placeholder: await isInferredPlaceholder(artifact, readTextFile),
+        ...(await inferredContentHashFields(artifact, readTextFile)),
       })),
     ),
   };
+}
+
+async function inferredContentHashFields(artifact, readTextFile) {
+  if (artifact.contentSha256) return {};
+  if (!["classical-yaml", "remaining-yaml"].includes(artifact.kind)) return {};
+  const content = await readTextFile(artifact.relativePath);
+  if (content == null) return {};
+  const normalized = yamlPayload(content).join("\n");
+  if (!normalized) return {};
+  return { contentSha256: sha256Hex(normalized) };
 }
 
 async function isInferredPlaceholder(artifact, readTextFile) {
@@ -309,6 +359,13 @@ async function isInferredPlaceholder(artifact, readTextFile) {
     return yamlPayload(content).join("\n") === PLACEHOLDER_REMAINING;
   }
   return false;
+}
+
+function sha256Hex(text) {
+  return crypto
+    .createHash("sha256")
+    .update(String(text), "utf8")
+    .digest("hex");
 }
 
 function placeholderProbePath(artifact) {
@@ -350,6 +407,7 @@ function normalizeManifestArtifact(artifact) {
     mihomo: artifact.mihomo ?? "rules",
     ruleGroupName: artifact.ruleGroupName,
     placeholder: Boolean(artifact.placeholder),
+    contentSha256: artifact.contentSha256 ? String(artifact.contentSha256) : undefined,
   };
 }
 
@@ -388,8 +446,9 @@ function sortArtifacts(artifacts) {
 
 function kindOrder(kind) {
   if (kind === "domain-mrs") return 0;
-  if (kind === "remaining-yaml") return 1;
-  if (kind === "ipcidr-mrs") return 2;
+  if (kind === "classical-yaml") return 1;
+  if (kind === "remaining-yaml") return 2;
+  if (kind === "ipcidr-mrs") return 3;
   return 3;
 }
 
@@ -430,7 +489,8 @@ function artifactURL({ repository, releaseBranch, relativePath }) {
 function kindLabel(kind) {
   if (kind === "domain-mrs") return "domain";
   if (kind === "ipcidr-mrs") return "ipcidr";
-  if (kind === "remaining-yaml") return "yaml";
+  if (kind === "classical-yaml") return "yaml(all)";
+  if (kind === "remaining-yaml") return "yaml(remaining)";
   return kind;
 }
 

@@ -83,6 +83,7 @@ test("compares provider artifacts by real presence and ignores placeholders", ()
     changes.removed.map((artifact) => artifact.relativePath),
     ["example/apple_Domain.mrs"],
   );
+  assert.deepEqual(changes.updated, []);
 });
 
 test("infers old release provider artifacts from file presence", async () => {
@@ -112,7 +113,7 @@ test("infers old release provider artifacts from file presence", async () => {
         },
         {
           relativePath: "example/apple.yaml",
-          kind: "remaining-yaml",
+          kind: "classical-yaml",
           placeholder: false,
         },
       ],
@@ -130,10 +131,7 @@ test("marks inferred old release placeholders from companion files", async () =>
     await fs.writeFile(path.join(root, "example", "empty_Domain.txt"), "blackhole.invalid\n");
     await fs.writeFile(path.join(root, "example", "empty_IP.mrs"), "");
     await fs.writeFile(path.join(root, "example", "empty_IP.txt"), "IP-CIDR,203.0.113.1/32\n");
-    await fs.writeFile(
-      path.join(root, "example", "empty.yaml"),
-      "payload:\n  - DOMAIN,blackhole.invalid\n",
-    );
+    await fs.writeFile(path.join(root, "example", "empty.yaml"), "payload:\n  - DOMAIN,blackhole.invalid\n");
 
     const previousManifest = await loadManifestFromReleaseDir(root);
     const currentManifest = {
@@ -153,8 +151,8 @@ test("marks inferred old release placeholders from companion files", async () =>
         {
           relativePath: "example/empty.yaml",
           sourceRelativeDir: "example",
-          kind: "remaining-yaml",
-          placeholder: true,
+          kind: "classical-yaml",
+          placeholder: false,
         },
       ],
     };
@@ -175,13 +173,13 @@ test("marks inferred old release placeholders from companion files", async () =>
         },
         {
           relativePath: "example/empty.yaml",
-          placeholder: true,
+          placeholder: false,
         },
       ],
     );
     assert.deepEqual(
       compareProviderArtifactChanges(previousManifest, currentManifest),
-      { added: [], removed: [] },
+      { added: [], removed: [], updated: [] },
     );
   } finally {
     await fs.rm(root, { recursive: true, force: true });

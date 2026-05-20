@@ -21,7 +21,7 @@ export function parseRuleContent(content, format, context = {}) {
   if (format === "text") {
     return String(content)
       .split(/\r?\n/)
-      .map((line) => line.trim())
+      .map(normalizeRawRuleLine)
       .filter((line) => line && !COMMENT_PREFIXES.some((prefix) => line.startsWith(prefix)));
   }
   if (format === "yaml") {
@@ -31,12 +31,46 @@ export function parseRuleContent(content, format, context = {}) {
     } catch (error) {
       throw new RuleSplitError(`invalid rule YAML: ${error.message}`, context);
     }
-    if (Array.isArray(parsed)) return parsed.map(String);
-    if (Array.isArray(parsed.payload)) return parsed.payload.map(String);
-    if (Array.isArray(parsed.rules)) return parsed.rules.map(String);
+    if (Array.isArray(parsed)) return parsed.map((item) => normalizeRawRuleLine(String(item)));
+    if (Array.isArray(parsed.payload)) return parsed.payload.map((item) => normalizeRawRuleLine(String(item)));
+    if (Array.isArray(parsed.rules)) return parsed.rules.map((item) => normalizeRawRuleLine(String(item)));
     throw new RuleSplitError("yaml rule files must contain payload or rules array", context);
   }
   throw new RuleSplitError(`unsupported rule format: ${format}`, context);
+}
+
+function normalizeRawRuleLine(rawLine) {
+  let line = String(rawLine ?? "").trim();
+  if (!line) return "";
+
+  // 兼容一些上游把 YAML 列表当作 txt 输出的情况：- 'example.com'
+  if (/^-\s+/u.test(line)) line = line.replace(/^-\s+/u, "").trim();
+
+  // 去掉整体包裹的引号（只处理首尾同类引号）
+  if (
+    (line.startsWith("'") && line.endsWith("'") && line.length >= 2) ||
+    (line.startsWith("\"") && line.endsWith("\"") && line.length >= 2)
+  ) {
+    line = line.slice(1, -1).trim();
+  }
+
+  // 处理规则行末尾的注释：仅在出现空白后跟 // 或 # 时截断
+  line = stripInlineComment(line);
+
+  return line.trim();
+}
+
+function stripInlineComment(line) {
+  const text = String(line ?? "");
+  const markers = [" //", "\t//", " #", "\t#"];
+  let cut = -1;
+  for (const marker of markers) {
+    const index = text.indexOf(marker);
+    if (index !== -1) {
+      if (cut === -1 || index < cut) cut = index;
+    }
+  }
+  return cut === -1 ? text : text.slice(0, cut).trim();
 }
 
 export function splitRules({ content, format, behavior, context = {} }) {
@@ -176,6 +210,8 @@ function isLiteralClassicalDomainPayload(domain) {
 function isMihomoDomainTriePayload(domain) {
   if (!domain || domain.endsWith(".")) return false;
   if (/^\s|\s$/u.test(domain)) return false;
+  // 过滤明显不可能出现在域名中的字符（常见于 YAML 列表/引号残留）
+  if (/['"]/u.test(domain)) return false;
   const parts = domain.toLowerCase().split(".");
   if (parts.length === 1) return parts[0] !== "";
   return parts.slice(1).every((part) => part !== "");
