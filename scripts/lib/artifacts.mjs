@@ -305,7 +305,7 @@ async function processGroup({ group, outputRoot, workRoot, fetchImpl, getMihomoP
     );
   }
 
-  const combinedYamlPath = path.join(entryOutputDir, `${group.entry.slug}_Classical.yaml`);
+  const combinedYamlPath = path.join(entryOutputDir, `${group.entry.slug}.yaml`);
   await writeReleaseTextWithHeader({
     outputPath: combinedYamlPath,
     fileName: path.basename(combinedYamlPath),
@@ -326,7 +326,7 @@ async function processGroup({ group, outputRoot, workRoot, fetchImpl, getMihomoP
 
   const remainingRules = buckets.remaining.rules;
   if (remainingRules.length > 0) {
-    const remainingPath = path.join(entryOutputDir, `${group.entry.slug}.yaml`);
+    const remainingPath = path.join(entryOutputDir, `${group.entry.slug}_Remaining.yaml`);
     await writeReleaseTextWithHeader({
       outputPath: remainingPath,
       fileName: path.basename(remainingPath),

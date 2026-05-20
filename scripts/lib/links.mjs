@@ -429,6 +429,9 @@ function ruleProviderName(artifact) {
 }
 
 function ruleProviderBaseName(artifact) {
+  if (artifact.kind === "remaining-yaml") {
+    return sanitizeProviderName(artifact.entryName);
+  }
   const suffixes = {
     "domain-mrs": ".mrs",
     "ipcidr-mrs": ".mrs",

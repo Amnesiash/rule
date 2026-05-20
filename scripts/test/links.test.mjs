@@ -112,16 +112,16 @@ test("renders source table and artifact links", () => {
         entryName: "mixed",
         kind: "classical-yaml",
         label: "mixed classical yaml",
-        fileName: "mixed_Classical.yaml",
-        relativePath: "example/mixed_Classical.yaml",
+        fileName: "mixed.yaml",
+        relativePath: "example/mixed.yaml",
       },
       {
         sourceRelativeDir: "example",
         entryName: "mixed",
         kind: "remaining-yaml",
         label: "mixed remaining yaml",
-        fileName: "mixed.yaml",
-        relativePath: "example/mixed.yaml",
+        fileName: "mixed_Remaining.yaml",
+        relativePath: "example/mixed_Remaining.yaml",
       },
       {
         sourceRelativeDir: "other",
@@ -173,7 +173,7 @@ rule-anchor:
   yaml: &yaml { type: http, behavior: classical, format: yaml, interval: 86400, header: *github-token-header }
 rule-providers:
   mixed_Domain: { <<: *domain, url: https://raw.githubusercontent.com/xream/rule/release/example/mixed_Domain.mrs }
-  mixed: { <<: *yaml, url: https://raw.githubusercontent.com/xream/rule/release/example/mixed.yaml }
+  mixed: { <<: *yaml, url: https://raw.githubusercontent.com/xream/rule/release/example/mixed_Remaining.yaml }
   mixed_IP: { <<: *ip, url: https://raw.githubusercontent.com/xream/rule/release/example/mixed_IP.mrs }`),
     true,
   );

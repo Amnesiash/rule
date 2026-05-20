@@ -123,14 +123,14 @@ payload:
         true,
       );
       assert.equal(
-        /^# NAME: apple\n# UPDATE: .+\n# TOTAL: 1\n\npayload:\n  - PROCESS-NAME,Example\.app\n$/u.test(
-          await fs.readFile(path.join(output, "apple.yaml"), "utf8"),
+        /^# NAME: apple_Remaining\n# UPDATE: .+\n# TOTAL: 1\n\npayload:\n  - PROCESS-NAME,Example\.app\n$/u.test(
+          await fs.readFile(path.join(output, "apple_Remaining.yaml"), "utf8"),
         ),
         true,
       );
       assert.equal(
-        /^# NAME: apple_Classical\n# UPDATE: .+\n# TOTAL: 7\n\npayload:\n  - DOMAIN,example\.com\n  - DOMAIN,\*\n  - DOMAIN,mijia cloud\n  - DOMAIN-SUFFIX,example\.org\n  - IP-CIDR,192\.0\.2\.0\/24\n  - IP-CIDR6,2001:db8::\/32\n  - PROCESS-NAME,Example\.app\n$/u.test(
-          await fs.readFile(path.join(output, "apple_Classical.yaml"), "utf8"),
+        /^# NAME: apple\n# UPDATE: .+\n# TOTAL: 7\n\npayload:\n  - DOMAIN,example\.com\n  - DOMAIN,\*\n  - DOMAIN,mijia cloud\n  - DOMAIN-SUFFIX,example\.org\n  - IP-CIDR,192\.0\.2\.0\/24\n  - IP-CIDR6,2001:db8::\/32\n  - PROCESS-NAME,Example\.app\n$/u.test(
+          await fs.readFile(path.join(output, "apple.yaml"), "utf8"),
         ),
         true,
       );
@@ -157,7 +157,7 @@ payload:
             placeholder: false,
           },
           {
-            relativePath: "example/apple.yaml",
+            relativePath: "example/apple_Remaining.yaml",
             kind: "remaining-yaml",
             placeholder: false,
           },
@@ -173,6 +173,7 @@ payload:
       assert.match(readme, /apple_Domain\.mrs/);
       assert.match(readme, /Text: \[apple_Domain\.txt\]/);
       assert.match(readme, /apple\.yaml/);
+      assert.match(readme, /apple_Remaining\.yaml/);
       assert.match(readme, /Source: _Unavailable_/);
       assert.match(
         readme,
@@ -192,7 +193,7 @@ rule-anchor:`),
       );
       assert.match(
         readme,
-        /apple: \{ <<: \*yaml, url: https:\/\/raw\.githubusercontent\.com\/xream\/rule\/release\/example\/apple\.yaml \}/,
+        /apple: \{ <<: \*yaml, url: https:\/\/raw\.githubusercontent\.com\/xream\/rule\/release\/example\/apple_Remaining\.yaml \}/,
       );
       assert.match(
         readme,
@@ -261,7 +262,7 @@ test("groups source entries by config file unless separate is true", async () =>
         "mrs:standalone.example\n",
       );
       assert.equal(
-        stripGeneratedHeader(await fs.readFile(path.join(output, "bundle_Classical.yaml"), "utf8")),
+        stripGeneratedHeader(await fs.readFile(path.join(output, "bundle.yaml"), "utf8")),
         "payload:\n  - DOMAIN,a.example\n  - DOMAIN,b.example\n",
       );
       const readme = await fs.readFile(path.join(output, "README.md"), "utf8");
@@ -359,11 +360,11 @@ test("deduplicates grouped rules while preserving first occurrence order", async
       );
       assert.equal(
         stripGeneratedHeader(await fs.readFile(path.join(output, "dedupe.yaml"), "utf8")),
-        "payload:\n  - PROCESS-NAME,SharedApp\n",
+        "payload:\n  - DOMAIN,first.example\n  - DOMAIN,second.example\n  - DOMAIN-SUFFIX,shared.example\n  - PROCESS-NAME,SharedApp\n",
       );
       assert.equal(
-        stripGeneratedHeader(await fs.readFile(path.join(output, "dedupe_Classical.yaml"), "utf8")),
-        "payload:\n  - DOMAIN,first.example\n  - DOMAIN,second.example\n  - DOMAIN-SUFFIX,shared.example\n  - PROCESS-NAME,SharedApp\n",
+        stripGeneratedHeader(await fs.readFile(path.join(output, "dedupe_Remaining.yaml"), "utf8")),
+        "payload:\n  - PROCESS-NAME,SharedApp\n",
       );
       const readme = await fs.readFile(path.join(output, "README.md"), "utf8");
       assert.doesNotMatch(readme, /dedupe_IP: \{ <<: \*ip,/);
