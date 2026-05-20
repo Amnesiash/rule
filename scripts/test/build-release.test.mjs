@@ -170,7 +170,7 @@ payload:
         ].sort((a, b) => a.relativePath.localeCompare(b.relativePath)),
       );
       const readme = await fs.readFile(path.join(output, "README.md"), "utf8");
-      assert.match(readme, /Source config: \[apple\.yaml\]/);
+      assert.match(readme, /配置文件：\[apple\.yaml\]/);
       assert.match(readme, /### mrs\(ipcidr\)/);
       assert.match(readme, /### mrs\(domain\)/);
       assert.match(readme, /### yaml\(all\)/);

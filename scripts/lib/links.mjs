@@ -50,7 +50,7 @@ export function renderReleaseReadme({
     "",
     renderSourceConfigLinks({ sourceConfig, repository: repo, mainBranch }),
     "",
-    "## Source Files",
+    "## 订阅列表",
     "",
     renderSourceTable({
       files: sourceConfig.files,
@@ -58,7 +58,7 @@ export function renderReleaseReadme({
       mainBranch,
     }),
     "",
-    "## Mihomo Config",
+    "## Mihomo 用法（复制粘贴）",
     "",
     renderMihomoConfig({
       artifacts: relevantArtifacts,
@@ -66,7 +66,7 @@ export function renderReleaseReadme({
       releaseBranch,
     }),
     "",
-    "## Artifacts",
+    "## 产物文件",
     "",
     renderArtifacts({
       artifacts: relevantArtifacts,
@@ -96,17 +96,17 @@ function renderSourceConfigLinks({ sourceConfig, repository, mainBranch }) {
         filePath: configFile.relativePath,
       })})`,
   );
-  return `${configFiles.length === 1 ? "Source config" : "Source configs"}: ${links.join(", ")}`;
+  return `配置文件：${links.join("、")}`;
 }
 
 function renderSourceTable({ files, repository, mainBranch }) {
   const header = [
-    "name",
-    "description",
-    "enabled",
-    "type",
-    "behavior",
-    "format",
+    "名称",
+    "备注",
+    "启用",
+    "类型",
+    "行为",
+    "格式",
     "mihomo",
     "headers",
     "url",

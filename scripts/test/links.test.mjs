@@ -136,11 +136,11 @@ test("renders source table and artifact links", () => {
 
   assert.match(
     readme,
-    /Source configs: \[apple\.yaml\]\(https:\/\/github\.com\/xream\/rule\/blob\/main\/source\/example\/apple\.yaml\), \[google\.yaml\]\(https:\/\/github\.com\/xream\/rule\/blob\/main\/source\/example\/google\.yaml\)/,
+    /配置文件：\[apple\.yaml\]\(https:\/\/github\.com\/xream\/rule\/blob\/main\/source\/example\/apple\.yaml\)、\[google\.yaml\]\(https:\/\/github\.com\/xream\/rule\/blob\/main\/source\/example\/google\.yaml\)/,
   );
   assert.match(
     readme,
-    /\| name \|description \|enabled \|type \|behavior \|format \|mihomo \|headers \|url \|path \|payload \|/,
+    /\| 名称 \|备注 \|启用 \|类型 \|行为 \|格式 \|mihomo \|headers \|url \|path \|payload \|/,
   );
   assert.match(readme, /\| mixed \| Mixed rules \| true \| file \|/);
   assert.match(readme, /User-Agent: rule-test\.\.\./);
@@ -156,7 +156,7 @@ test("renders source table and artifact links", () => {
   assert.match(readme, /DOMAIN,first\.example\.\.\./);
   assert.match(readme, /DOMAIN,draft\.example/);
   assert.doesNotMatch(readme, /DOMAIN,draft\.example\.\.\./);
-  assert.match(readme, /## Mihomo Config/);
+  assert.match(readme, /## Mihomo 用法（复制粘贴）/);
   assert.equal(
     readme.includes(`proxy-groups:
   - name: "mixed"
