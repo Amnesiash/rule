@@ -208,10 +208,10 @@ test("renders compact Telegram HTML message", () => {
   });
 
   assert.match(message, /<b>rule provider 产物变化<\/b>/);
-  assert.match(message, /新增 <b>1<\/b> \/ 减少 <b>1<\/b>/);
+  assert.match(message, /新增 <b>1<\/b> \/ 减少 <b>1<\/b> \/ 更新 <b>0<\/b>/);
   assert.match(
     message,
-    /<a href="https:\/\/raw\.githubusercontent\.com\/xream\/rule\/release\/Apple\/Apple_IP\.mrs">Apple\/Apple_IP\.mrs<\/a> <code>ipcidr<\/code>/,
+    /<a href="https:\/\/raw\.githubusercontent\.com\/xream\/rule\/release\/Apple\/Apple_IP\.mrs">Apple\/Apple_IP\.mrs<\/a>/,
   );
   assert.match(message, /<b>减少<\/b>/);
 });
@@ -233,7 +233,7 @@ test("truncates Telegram HTML message to fit sendMessage limit", () => {
   });
 
   assert.ok(message.length <= 4096, `message length was ${message.length}`);
-  assert.match(message, /新增 <b>25<\/b> \/ 减少 <b>25<\/b>/);
+  assert.match(message, /新增 <b>25<\/b> \/ 减少 <b>25<\/b> \/ 更新 <b>0<\/b>/);
   assert.match(message, /还有 \d+ 项/);
 });
 

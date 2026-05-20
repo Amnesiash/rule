@@ -464,7 +464,7 @@ function renderChangeSection({
   const lines = [`<b>${escapeHtml(title)}</b>`];
   for (const artifact of visibleArtifacts) {
     lines.push(
-      `- ${renderArtifactLink({ artifact, repository, releaseBranch })} <code>${escapeHtml(kindLabel(artifact.kind))}</code>`,
+      `- ${renderArtifactLink({ artifact, repository, releaseBranch })}`,
     );
   }
   if (artifacts.length > visibleArtifacts.length) {
@@ -484,14 +484,6 @@ function artifactURL({ repository, releaseBranch, relativePath }) {
     .split("/")
     .map((part) => encodeURIComponent(part))
     .join("/")}`;
-}
-
-function kindLabel(kind) {
-  if (kind === "domain-mrs") return "domain";
-  if (kind === "ipcidr-mrs") return "ipcidr";
-  if (kind === "classical-yaml") return "yaml(all)";
-  if (kind === "remaining-yaml") return "yaml(remaining)";
-  return kind;
 }
 
 function escapeHtml(value) {
