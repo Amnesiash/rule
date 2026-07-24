@@ -1,0 +1,110 @@
+# NAME: Direct
+# UPDATE: 2026-07-24 08:38:05
+# TOTAL: 100
+
+payload:
+  - DOMAIN,<!DOCTYPE html>
+  - DOMAIN,<head>
+  - DOMAIN,<!-- Twitter Cards -->
+  - DOMAIN,<!-- Google tag (gtag.js) -->
+  - DOMAIN,<script>
+  - DOMAIN,window.dataLayer = window.dataLayer || [];
+  - DOMAIN,function gtag(){dataLayer.push(arguments);}
+  - DOMAIN,<!-- Umami Analytics -->
+  - DOMAIN,<body>
+  - DOMAIN,<noscript>
+  - DOMAIN,<!-- built files will be auto injected -->
+  - DOMAIN,dl.google.com
+  - DOMAIN,origin-a.akamaihd.net
+  - DOMAIN,fairplay.l.qq.com
+  - DOMAIN,livew.l.qq.com
+  - DOMAIN,vd.l.qq.com
+  - DOMAIN,errlog.umeng.com
+  - DOMAIN,msg.umeng.com
+  - DOMAIN,msg.umengcloud.com
+  - DOMAIN,tracking.miui.com
+  - DOMAIN,app.adjust.com
+  - DOMAIN,bdtj.tagtic.cn
+  - DOMAIN,rewards.hypixel.net
+  - DOMAIN,app.appsflyer.com
+  - DOMAIN,log.mmstat.com
+  - DOMAIN,sycm.mmstat.com
+  - DOMAIN,ci.android.com
+  - DOMAIN,clientservices.googleapis.com
+  - DOMAIN,dl.l.google.com
+  - DOMAIN,redirector.gvt1.com
+  - DOMAIN,update.googleapis.com
+  - DOMAIN,vi.l.qq.com
+  - DOMAIN,analytics.strava.com
+  - DOMAIN-SUFFIX,checkip.dyndns.org
+  - DOMAIN-SUFFIX,checkip.synology.com
+  - DOMAIN-SUFFIX,checkipv6.dyndns.org
+  - DOMAIN-SUFFIX,cloudstudio.work
+  - DOMAIN-SUFFIX,cocopilot.org
+  - DOMAIN-SUFFIX,czzyvideo.com
+  - DOMAIN-SUFFIX,ghp.ci
+  - DOMAIN-SUFFIX,gradio.live
+  - DOMAIN-SUFFIX,iqiyis.com
+  - DOMAIN-SUFFIX,istoreos.com
+  - DOMAIN-SUFFIX,kelee.one
+  - DOMAIN-SUFFIX,musicbrainz.org
+  - DOMAIN-SUFFIX,ngrok-free.app
+  - DOMAIN-SUFFIX,ntp.org
+  - DOMAIN-SUFFIX,quickconnect.to
+  - DOMAIN-SUFFIX,speedtest.cn
+  - DOMAIN-SUFFIX,steamcontent.com
+  - DOMAIN-SUFFIX,synology.com
+  - DOMAIN-SUFFIX,ol.epicgames.com
+  - DOMAIN-SUFFIX,dizhensubao.getui.com
+  - DOMAIN-SUFFIX,googletraveladservices.com
+  - DOMAIN-SUFFIX,tracking-protection.cdn.mozilla.net
+  - DOMAIN-SUFFIX,koodomobile.com
+  - DOMAIN-SUFFIX,koodomobile.ca
+  - DOMAIN-SUFFIX,synology.me
+  - DOMAIN-SUFFIX,DiskStation.me
+  - DOMAIN-SUFFIX,i234.me
+  - DOMAIN-SUFFIX,myDS.me
+  - DOMAIN-SUFFIX,DSCloud.biz
+  - DOMAIN-SUFFIX,DSCloud.me
+  - DOMAIN-SUFFIX,DSCloud.mobi
+  - DOMAIN-SUFFIX,DSmyNAS.com
+  - DOMAIN-SUFFIX,DSmyNAS.net
+  - DOMAIN-SUFFIX,DSmyNAS.org
+  - DOMAIN-SUFFIX,FamilyDS.com
+  - DOMAIN-SUFFIX,FamilyDS.net
+  - DOMAIN-SUFFIX,FamilyDS.org
+  - DOMAIN-SUFFIX,blog.google
+  - DOMAIN-SUFFIX,googletraveladservices-cn.com
+  - DOMAIN-KEYWORD,quickconnect
+  - DOMAIN-KEYWORD,synology
+  - <html lang="">
+  - "<title>GitHub Proxy ä»£çå é</title>"
+  - <!-- <title>vue</title> -->
+  - <meta charset="utf-8">
+  - <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  - <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  - <link rel="icon" href="/favicon.ico">
+  - <meta name="twitter:card" content="summary_large_image" />
+  - <meta name="twitter:site" content="@stilleshan" />
+  - <meta name="twitter:creator" content="@stilleshan" />
+  - <meta property="og:url" content="https://ghfast.top" />
+  - "<meta property=\"og:title\" content=\"GitHub Proxy ä»£çå é\" />"
+  - <meta property="og:description"
+  - "content=\"GitHub æä»¶ , Releases , archive , gist ,
+    raw.githubusercontent.com æä»¶ä»£çå éä¸è½½æå¡.\" />"
+  - <meta property="og:image" content="/img/ghproxy_com_twitter_800.jpg" />
+  - <!-- <script async
+    src="https://ga.ioiox.net/gtag/js?id=G-YR9B2BS8D8"></script>
+  - gtag('js', new Date());
+  - gtag('config', 'G-YR9B2BS8D8');
+  - </script> -->
+  - <script defer src="https://umami.ioiox.net/script.js"
+    data-website-id="57725903-779a-4e20-9187-d755b752a177"></script>
+  - <script defer src="/js/chunk-vendors.js"></script><script defer
+    src="/js/app.js"></script></head>
+  - <strong>We're sorry but vue doesn't work properly without JavaScript
+    enabled. Please enable it to continue.</strong>
+  - </noscript>
+  - <div id="app"></div>
+  - </body>
+  - </html>
